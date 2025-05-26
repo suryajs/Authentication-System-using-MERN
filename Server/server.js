@@ -5,7 +5,6 @@ import cookieParser from "cookie-parser";
 import connectDB from "./config/mongodb.js";
 import {authRouter} from "./Routes/authRoutes.js";
 
-
 const app = express();
 const port = process.env.PORT || 5000;
 connectDB();
