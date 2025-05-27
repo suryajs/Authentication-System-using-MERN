@@ -3,19 +3,19 @@ import jwt from "jsonwebtoken";
 import userModel from "../models/userModel.js";
 import transporter from "../config/nodemailer.js";
 
-export const register = async (req,res) => {
-    const {name, email, password} = req.body
+export const register = async (req, res) => {
+    const { name, email, password } = req.body
 
-    if(!name || !email || !password){
-        return res.json({success:false ,message: "Missing details"})
+    if (!name || !email || !password) {
+        return res.json({ success: false, message: "Missing details" })
     }
 
-    try{
+    try {
 
-        const existingUser = await userModel.findOne({email})
+        const existingUser = await userModel.findOne({ email })
 
-        if(existingUser){
-            return res.json({success:false ,message: "User already exists"})
+        if (existingUser) {
+            return res.json({ success: false, message: "User already exists" })
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -26,13 +26,13 @@ export const register = async (req,res) => {
             password: hashedPassword
         })
 
-        const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, {expiresIn: "1d"});
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
         res.cookie("token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV !== "development",
             sameSite: process.env.NODE_ENV !== "development" ? "none" : "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000           
+            maxAge: 7 * 24 * 60 * 60 * 1000
         })
 
         // Sending welcome email
@@ -45,73 +45,73 @@ export const register = async (req,res) => {
 
         await transporter.sendMail(mailOptions);
 
-        return res.json({success:true ,message: "Registration successful"})
+        return res.json({ success: true, message: "Registration successful" })
 
-    }catch(error){
-        res.json({success:false ,message: error.message})
+    } catch (error) {
+        res.json({ success: false, message: error.message })
     }
 }
 
-export const login = async (req,res) => {
-    const {email, password} = req.body;
+export const login = async (req, res) => {
+    const { email, password } = req.body;
 
-    if(!email || !password){
-        return res.json({success:false ,message: "Email and password are required"})
+    if (!email || !password) {
+        return res.json({ success: false, message: "Email and password are required" })
     }
 
-    try{
-        const user = await userModel.findOne({email})
+    try {
+        const user = await userModel.findOne({ email })
 
-        if(!user){
-            return res.json({success:false ,message: "User does not exist"})
+        if (!user) {
+            return res.json({ success: false, message: "User does not exist" })
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
 
-        if(!isMatch){
-            return res.json({success:false ,message: "Incorrect password"})
+        if (!isMatch) {
+            return res.json({ success: false, message: "Incorrect password" })
         }
 
-        const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, {expiresIn: "1d"});
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
         res.cookie("token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV !== "development",
             sameSite: process.env.NODE_ENV !== "development" ? "none" : "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000           
+            maxAge: 7 * 24 * 60 * 60 * 1000
         })
 
-        return res.json({success:true ,message: "Login successful"})
+        return res.json({ success: true, message: "Login successful" })
 
-    }catch(error){
-        return res.json({success:false ,message: error.message})
+    } catch (error) {
+        return res.json({ success: false, message: error.message })
     }
 }
 
-export const logout = async (req,res) => {
-    try{
+export const logout = async (req, res) => {
+    try {
 
         res.clearCookie("token", {
             httpOnly: true,
             secure: process.env.NODE_ENV !== "development",
-            sameSite: process.env.NODE_ENV !== "development" ? "none" : "strict",     
+            sameSite: process.env.NODE_ENV !== "development" ? "none" : "strict",
         })
 
-        return res.json({success:true ,message: "Logged out successfully"})
-    }catch(error){
+        return res.json({ success: true, message: "Logged out successfully" })
+    } catch (error) {
         return
     }
 }
 
 // Send verification otp
-export const sendVerificationOtp = async (req,res) => {
-    try{
-        const {userId} = req.body;
+export const sendVerificationOtp = async (req, res) => {
+    try {
+        const { userId } = req.body;
 
         const user = await userModel.findById(userId);
 
-        if(user.isAccountVerified){
-            return res.json({success:false ,message: "Account Already Verified"})
+        if (user.isAccountVerified) {
+            return res.json({ success: false, message: "Account Already Verified" })
         }
 
         const otp = String(Math.floor(100000 + Math.random() * 900000));
@@ -130,22 +130,47 @@ export const sendVerificationOtp = async (req,res) => {
 
         await transporter.sendMail(mailOptions);
 
-        return res.json({success:true ,message: "OTP sent successfully"})
+        return res.json({ success: true, message: "OTP sent successfully" })
 
-    }catch(error){
+    } catch (error) {
 
     }
 }
 
-export const verifyEmail = async (req,res) => {
-    try{
+export const verifyEmail = async (req, res) => {
 
-        const { userId, otp } = req.body;
 
-        if(!userId || !otp){
-            return res.json({success:false ,message: "Missing details"})
+    const { userId, otp } = req.body;
+
+    if (!userId || !otp) {
+        return res.json({ success: false, message: "Missing details" })
+    }
+    try {
+
+        const user = await userModel.findById(userId);
+
+        if (!user) {
+            return res.json({ success: false, message: "User does not exist" })
         }
-    }catch(error){
+
+        if (user.verifyOtp === '' || user.verifyOtp !== otp) {
+            return res.json({ success: false, message: "Invalid OTP" })
+        }
+
+        if (user.verifyOtpExpiredAt < Date.now()) {
+            return res.json({ success: false, message: "OTP expired" })
+        }
+
+        user.isAccountVerified = true;
+        user.verifyOtp = '';
+        user.verifyOtpExpiredAt = 0;
+
+        await user.save();
+
+        return res.json({ success: true, message: "Email verified successfully" })
+
+    } catch (error) {
+        return res.json({ success: false, message: error.message })
 
     }
 }
