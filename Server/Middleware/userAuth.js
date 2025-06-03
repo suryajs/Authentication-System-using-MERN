@@ -1,25 +1,27 @@
-import JWT from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
-export const userAuth = async (req,res,next) => {
-    const {token} = req.cookies;
+const userAuth = async (req,res,next) => {
+    const { token } = req.cookies;
 
     if(!token){
-        return res.json({success:false, message:"User not logged in"});
+        return res.status(401).json({success:false, message:"Not Authorized. Login again!"});
     }
 
     try {
         
-        const tokenDecoded = JWT.verify(token, process.env.JWT_SECRET);
+        const tokenDecoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        if(tokenDecoded.id){
-            req.body.userId - tokenDecoded.id;
-        } else{
-            return res.json({success:false, message:"User not logged in"});
-        }
+        if(!tokenDecoded?.id){
+            return res.status(401).json({ success: false, message: "Invalid token" });
+        } 
 
+        req.userId = tokenDecoded.id;
         next();
 
     } catch (error) {
-        return res.json({success:false, message:"User not logged in"});
+        console.error("JWT Error:", error.message);
+        return res.json({success:false, message:error.message});
     }
 }
+
+export default userAuth

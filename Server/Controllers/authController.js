@@ -105,8 +105,9 @@ export const logout = async (req, res) => {
 
 // Send verification otp
 export const sendVerificationOtp = async (req, res) => {
+    console.log("Reached sendVerificationOtp");
     try {
-        const { userId } = req.body;
+        const  userId  = req.userId;
 
         const user = await userModel.findById(userId);
 
@@ -137,11 +138,11 @@ export const sendVerificationOtp = async (req, res) => {
     }
 }
 
+// Verify email using OTP
 export const verifyEmail = async (req, res) => {
 
-
-    const { userId, otp } = req.body;
-
+    const userId = req.userId;
+    const otp = req.body.otp;
     if (!userId || !otp) {
         return res.json({ success: false, message: "Missing details" })
     }
@@ -172,5 +173,53 @@ export const verifyEmail = async (req, res) => {
     } catch (error) {
         return res.json({ success: false, message: error.message })
 
+    }
+}
+
+// Check if user is authenticated
+export const isAuthenticated = async(req, res) =>{
+    try{
+        return res.json({success:true, message:"User is authenticated"});
+    }catch(error){
+        res.json({success:false, message:error.message})
+    }
+}
+
+// Send Password Reset OTP
+export const sendPasswordResetOtp = async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.json({ success: false, message: "Email is required" })
+    }
+
+    try {
+
+        const user = await userModel.findOne({ email });
+
+        if (!user) {
+            return res.json({ success: false, message: "User does not exist" })
+        }
+
+        const otp = String(Math.floor(100000 + Math.random() * 900000));
+
+        user.resetOtp = otp;
+        user.resetOtpExpiredAt = Date.now() + 15 * 60 * 1000;
+
+        await user.save();
+
+        const mailOptions = {
+            from: process.env.SENDER_EMAIL,
+            to: user.email,
+            subject: "Reset your password",
+            text: `Hello ${user.name},\n\nPlease use the following OTP to reset your password: ${otp}\n\nBest,\nYour Team`,
+        };
+
+        await transporter.sendMail(mailOptions);
+
+        return res.json({ success: true, message: "OTP sent successfully" })
+        
+    }catch(error){
+        return res.json({success:false, message:error.message})
     }
 }
